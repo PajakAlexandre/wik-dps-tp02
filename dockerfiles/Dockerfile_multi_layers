@@ -1,0 +1,51 @@
+# Use the Rust image as the base image
+FROM rust:1.68 as builder
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the Cargo.toml and Cargo.lock files to leverage Docker layer caching
+COPY ../rust_api/Cargo.toml Cargo.lock ./
+
+# Build the dependencies
+RUN mkdir -p src && echo 'fn main() {}' > src/main.rs
+RUN cargo build --release
+
+# Remove the dummy source file
+RUN rm src/main.rs
+
+# Copy the source code to the container
+COPY ../rust_api/src ./src/
+
+# Build the Rust application
+RUN cargo build --release
+
+# Create a new lightweight image
+FROM debian:buster-slim as runtime
+
+# Set the working directory
+WORKDIR /app
+
+# Create a non-root user
+RUN useradd -ms /bin/bash rust_api_user
+
+# Change ownership of the application directory to the new user
+RUN chown -R rust_api_user:rust_api_user /app
+
+# setup application permissions
+RUN chmod -R 755 /app
+
+# Switch to the new user
+USER rust_api_user
+
+# Copy the built binary from the builder image
+COPY --from=builder /app/target/release/rust_api ./rust_api
+
+# Start the Actix Web application
+CMD ["./rust_api"]
+
+
+## Build the image
+# docker build -t rust_api:latest .
+## Run the container
+# docker run -e PING_LISTEN_PORT=8080 -p 8080:8080 rust_api:latest
