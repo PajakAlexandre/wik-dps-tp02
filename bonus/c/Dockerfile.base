@@ -1,0 +1,20 @@
+# Use a minimal base image  Alpine Linux
+FROM alpine:latest
+
+# Install the C compiler (GCC) and the standard C library headers
+RUN apk --no-cache add gcc musl-dev
+
+# Copy your C code into the image
+COPY main.c /app/main.c
+
+# Set the working directory
+WORKDIR /app
+
+# Compile the C code and create an executable
+RUN gcc -o counter main.c
+
+# Clean up any unnecessary files
+RUN rm main.c
+
+# Set the entry point for your program
+CMD ["/app/counter"]
